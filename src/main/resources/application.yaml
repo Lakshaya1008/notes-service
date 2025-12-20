@@ -3,15 +3,17 @@ spring:
     name: notesapp
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/notesapp_db
-    username: postgres
-    password: postgres123
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/notesapp_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres123}
     driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
+      # ⚠️ WARNING: 'update' is for development/testing only
+      # Production systems should use Flyway/Liquibase for schema management
       ddl-auto: update
-    show-sql: true
+    show-sql: ${SHOW_SQL:true}
     properties:
       hibernate:
         format_sql: true
@@ -21,10 +23,12 @@ spring:
       mode: never
 
 server:
-  port: 8081
+  port: ${PORT:8080}
 
 # JWT Configuration
+# ⚠️ SECURITY NOTE: Default secret provided for local development & assignment review ONLY
+# Production deployments MUST override via JWT_SECRET environment variable
 jwt:
   secret: ${JWT_SECRET:gSJ4oTeHHUcr+NFvfyW4t0AArQ0/EODgjh+QLKLVKAw=}
-  expiration: 86400000  # 24 hours in milliseconds
+  expiration: ${JWT_EXPIRATION:86400000}  # 24 hours in milliseconds
 
