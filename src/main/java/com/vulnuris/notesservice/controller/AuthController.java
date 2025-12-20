@@ -66,10 +66,10 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<String> login(@Valid @RequestBody LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Invalid credentials"));
+                .orElse(null);
 
-        // Validate password (plain text comparison for assignment)
-        if (!user.getPassword().equals(request.getPassword())) {
+        // Validate user exists and password matches (plain text comparison for assignment)
+        if (user == null || !user.getPassword().equals(request.getPassword())) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
         }
 

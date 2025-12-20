@@ -23,6 +23,13 @@ public class JwtUtil {
             @Value("${jwt.secret}") String secret,
             @Value("${jwt.expiration}") long expiration
     ) {
+        // Validate JWT secret length for HS256 algorithm
+        if (secret == null || secret.length() < 32) {
+            throw new IllegalStateException(
+                "JWT_SECRET must be at least 32 characters long for HMAC-SHA256. " +
+                "Current length: " + (secret != null ? secret.length() : 0)
+            );
+        }
         this.key = Keys.hmacShaKeyFor(secret.getBytes());
         this.expiration = expiration;
     }

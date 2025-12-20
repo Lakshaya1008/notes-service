@@ -141,15 +141,17 @@ Configure these in your Render Web Service settings:
 | `DB_PASSWORD` | Database password | `<provided by Render>` | ✅ Yes |
 | `JWT_SECRET` | Secret key for JWT signing (min 32 chars) | `gSJ4oTeHHUcr+NFvfyW4t0AArQ0/EODgjh+QLKLVKAw=` | ⚠️ **Production only** |
 | `JWT_EXPIRATION` | Token expiration in milliseconds | `86400000` (24 hours) | ❌ No (defaults to 24h) |
-| `SHOW_SQL` | Show SQL queries in logs | `false` | ❌ No (defaults to true) |
+| `SHOW_SQL` | Show SQL queries in logs | `true` (for debugging) | ❌ No (defaults to false) |
 
 **Important Notes:**
 - `JWT_SECRET` must be at least 32 characters for HMAC-SHA256
+  - **Application validates** secret length on startup - will fail if < 32 characters
 - **Local development:** A default JWT secret is provided in `application.yaml`
 - **Production:** You MUST override `JWT_SECRET` with a secure random value
 - Generate a secure random string: `openssl rand -base64 32`
 - The `PORT` environment variable is automatically provided by Render
 - For Render's internal PostgreSQL, use the "Internal Database URL" format
+- SQL logging is disabled by default for production - set `SHOW_SQL=true` for debugging
 
 ### Render Setup Steps
 
@@ -277,6 +279,30 @@ When moving beyond the free tier:
 - Implement rate limiting
 - Add monitoring and alerting
 - Use a secrets manager for sensitive values
+
+### ✅ Production Safety Features
+
+The application includes several production-ready safeguards:
+
+**1. Startup Validation**
+- JWT secret length is validated on startup (minimum 32 characters for HS256)
+- Application will fail fast with clear error message if validation fails
+- Prevents runtime security issues from weak secrets
+
+**2. Error Handling**
+- Generic exception handler prevents stack trace leakage to clients
+- All errors return clean JSON responses
+- Internal errors are logged server-side only for debugging
+
+**3. Environment-Based Configuration**
+- All sensitive configuration via environment variables
+- No hardcoded credentials or secrets
+- Safe defaults for local development, overrides for production
+
+**4. Clean Logging**
+- SQL logging disabled by default (set `SHOW_SQL=true` for debugging)
+- Reduces noise in production logs
+- Improves performance by avoiding unnecessary query logging
 
 ## 🔒 Security Features
 

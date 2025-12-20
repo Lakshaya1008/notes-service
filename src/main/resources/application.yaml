@@ -13,7 +13,7 @@ spring:
       # ⚠️ WARNING: 'update' is for development/testing only
       # Production systems should use Flyway/Liquibase for schema management
       ddl-auto: update
-    show-sql: ${SHOW_SQL:true}
+    show-sql: ${SHOW_SQL:false}
     properties:
       hibernate:
         format_sql: true
