@@ -29,7 +29,8 @@ INSERT INTO users (id, email, password, role, tenant_id) VALUES (2, 'user@anothe
 
 Or use PowerShell:
 ```powershell
-$env:PGPASSWORD='postgres123'; psql -U postgres -d notesapp_db -f test-data.sql
+# Set your local PostgreSQL password
+$env:PGPASSWORD='your_postgres_password'; psql -U postgres -d notesapp_db -f test-data.sql
 ```
 
 ---
