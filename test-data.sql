@@ -1,12 +1,20 @@
--- Insert test tenant
-INSERT INTO tenants (id, name, subscription_plan) VALUES (1, 'Test Company', 'PRO');
+-- Make sure you're connected to notesapp_db database first!
 
--- Insert test user (email: admin@test.com, password: password123)
-INSERT INTO users (id, email, password, role, tenant_id) VALUES (1, 'admin@test.com', 'password123', 'ADMIN', 1);
+-- Insert test tenants
+INSERT INTO tenants (id, name, subscription_plan)
+VALUES (1, 'Test Company', 'PRO')
+ON CONFLICT (id) DO NOTHING;
 
--- Insert another tenant
-INSERT INTO tenants (id, name, subscription_plan) VALUES (2, 'Another Company', 'FREE');
+INSERT INTO tenants (id, name, subscription_plan)
+VALUES (2, 'Another Company', 'FREE')
+ON CONFLICT (id) DO NOTHING;
 
--- Insert another user for different tenant
-INSERT INTO users (id, email, password, role, tenant_id) VALUES (2, 'user@another.com', 'password123', 'MEMBER', 2);
+-- Insert test users
+INSERT INTO users (id, email, password, role, tenant_id)
+VALUES (1, 'admin@test.com', 'password123', 'ADMIN', 1)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO users (id, email, password, role, tenant_id)
+VALUES (2, 'user@another.com', 'password123', 'MEMBER', 2)
+ON CONFLICT (id) DO NOTHING;
 

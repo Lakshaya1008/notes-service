@@ -9,7 +9,7 @@ import java.util.Map;
 
 public class JwtUtil {
 
-    private static final String SECRET = "replace_this_with_a_long_secret_key_32_chars_min";
+    private static final String SECRET = "gSJ4oTeHHUcr+NFvfyW4t0AArQ0/EODgjh+QLKLVKAw=";
     private static final long EXPIRATION = 1000 * 60 * 60 * 24; // 24 hours
 
     private static final Key key = Keys.hmacShaKeyFor(SECRET.getBytes());

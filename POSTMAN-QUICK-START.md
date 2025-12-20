@@ -1,5 +1,24 @@
 # Quick Postman Testing - Copy & Paste Ready
 
+## ⚠️ FIRST TIME SETUP - Insert Test Data
+
+**Run this ONCE before testing:**
+
+```sql
+-- In PostgreSQL (psql or pgAdmin):
+INSERT INTO tenants (id, name, subscription_plan) VALUES (1, 'Test Company', 'PRO');
+INSERT INTO tenants (id, name, subscription_plan) VALUES (2, 'Another Company', 'FREE');
+INSERT INTO users (id, email, password, role, tenant_id) VALUES (1, 'admin@test.com', 'password123', 'ADMIN', 1);
+INSERT INTO users (id, email, password, role, tenant_id) VALUES (2, 'user@another.com', 'password123', 'MEMBER', 2);
+```
+
+Or use PowerShell:
+```powershell
+$env:PGPASSWORD='postgres123'; psql -U postgres -d notesapp_db -f test-data.sql
+```
+
+---
+
 ## 1️⃣ LOGIN (Get Token)
 ```
 POST http://localhost:8081/auth/login
