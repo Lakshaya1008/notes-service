@@ -1,4 +1,4 @@
-package com.lakshaya.notesapp;
+package com.vulnuris.notesservice;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
