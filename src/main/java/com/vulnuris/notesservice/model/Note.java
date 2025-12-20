@@ -21,6 +21,12 @@ public class Note {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    @Column(nullable = false)
+    private Long tenantId;
+
+    @Column(nullable = false)
+    private Long createdBy;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -62,6 +68,22 @@ public class Note {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public Long getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(Long tenantId) {
+        this.tenantId = tenantId;
+    }
+
+    public Long getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(Long createdBy) {
+        this.createdBy = createdBy;
     }
 
     public LocalDateTime getCreatedAt() {
