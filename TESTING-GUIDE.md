@@ -25,7 +25,7 @@
 
 ## TEST 1: Login - Get JWT Token ✅
 
-### Request
+### Request (Valid Credentials)
 ```
 POST http://localhost:8081/auth/login
 Content-Type: application/json
@@ -51,6 +51,35 @@ eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEsInRlbmFudElkIjoxLCJyb2xlIjoiQURNSU4iLCJpYXQ
 ✅ Status code is 200
 ✅ Response is a long string (JWT token)
 ✅ Token contains 3 parts separated by dots (header.payload.signature)
+
+---
+
+## TEST 1B: Login - Invalid Password ❌ (Must Fail)
+
+### Request (Wrong Password)
+```
+POST http://localhost:8081/auth/login
+Content-Type: application/json
+
+Body (JSON):
+{
+    "email": "admin@test.com",
+    "password": "wrongpassword123"
+}
+```
+
+### Expected Response
+```
+HTTP 401 Unauthorized
+Content-Type: text/plain
+
+Invalid credentials
+```
+
+### What to Verify
+✅ Status code is 401 (not 200)
+✅ Generic error message (doesn't reveal if user exists)
+✅ Password validation is working!
 
 ---
 
@@ -224,20 +253,142 @@ HTTP 401 Unauthorized
 
 ---
 
+## TEST 10: Tenant Upgrade - ADMIN Only ✅
+
+### Setup
+This test requires an ADMIN user on a FREE plan tenant.
+
+**Option 1: Update Tenant 2 user to ADMIN (temporary for testing)**
+```sql
+UPDATE users SET role = 'ADMIN' WHERE email = 'user@another.com';
+```
+
+**Option 2: Create new test data**
+```sql
+INSERT INTO tenants (id, name, subscription_plan) VALUES (3, 'Test FREE Tenant', 'FREE');
+INSERT INTO users (id, email, password, role, tenant_id) VALUES (3, 'admin@free.com', 'password123', 'ADMIN', 3);
+```
+
+---
+
+### Test 10A: MEMBER User Cannot Upgrade (Must Fail)
+
+```
+PUT http://localhost:8081/api/tenants/upgrade
+Authorization: Bearer <TENANT_2_MEMBER_TOKEN>
+```
+
+### Expected Response
+```
+HTTP 403 Forbidden
+Content-Type: application/json
+
+{
+    "error": "Forbidden"
+}
+```
+
+### What to Verify
+✅ Status code is 403 (not 401 or 200)
+✅ MEMBER role blocked from upgrading
+✅ Access denied handler working
+
+---
+
+### Test 10B: ADMIN User Can Upgrade to PRO (Must Succeed)
+
+**First, login as ADMIN on FREE plan tenant:**
+```
+POST http://localhost:8081/auth/login
+Content-Type: application/json
+
+Body (JSON):
+{
+    "email": "user@another.com",
+    "password": "password123"
+}
+```
+(Assuming you temporarily changed user@another.com to ADMIN role)
+
+**Then upgrade:**
+```
+PUT http://localhost:8081/api/tenants/upgrade
+Authorization: Bearer <ADMIN_FREE_TENANT_TOKEN>
+```
+
+### Expected Response
+```
+HTTP 200 OK
+Content-Type: text/plain
+
+Tenant successfully upgraded to PRO plan
+```
+
+### What to Verify
+✅ Status code is 200
+✅ Success message returned
+✅ Tenant's subscription plan changed to PRO in database
+✅ ADMIN role has upgrade permission
+
+**Verify in Database:**
+```sql
+SELECT id, name, subscription_plan FROM tenants WHERE id = 2;
+-- Should show: subscription_plan = 'PRO'
+```
+
+---
+
+### Test 10C: Already PRO Returns Appropriate Message
+
+**Try upgrading again:**
+```
+PUT http://localhost:8081/api/tenants/upgrade
+Authorization: Bearer <ADMIN_PRO_TENANT_TOKEN>
+```
+
+### Expected Response
+```
+HTTP 200 OK
+Content-Type: text/plain
+
+Tenant already on PRO plan
+```
+
+### What to Verify
+✅ Status code is 200 (not error)
+✅ Idempotent behavior (safe to call multiple times)
+✅ Clear message about current state
+
+---
+
 ## Postman Collection Setup
 
 ### Collection Structure
 ```
 Notes App - Multi-Tenant
 ├── Auth
+│   ├── Register New User
 │   ├── Login Tenant 1 (admin@test.com)
-│   └── Login Tenant 2 (user@another.com)
+│   ├── Login Tenant 2 (user@another.com)
+│   └── Login with Wrong Password (should fail)
 ├── Notes - Authenticated
 │   ├── Get All Notes (with token)
 │   ├── Create Note (with token)
 │   ├── Get Note by ID (with token)
 │   ├── Update Note (with token)
-│   └── Delete Note (with token)
+│   └── Delete Note (with token - ADMIN only)
+├── Subscription Limits
+│   ├── Create Note 1 (FREE plan)
+│   ├── Create Note 2 (FREE plan)
+│   ├── Create Note 3 (FREE plan)
+│   └── Create Note 4 (should fail - HTTP 403)
+├── Role-Based Authorization
+│   ├── Delete as MEMBER (should fail - HTTP 403)
+│   └── Delete as ADMIN (should succeed - HTTP 204)
+├── Tenant Management (ADMIN only)
+│   ├── Upgrade as MEMBER (should fail - HTTP 403)
+│   ├── Upgrade as ADMIN on FREE (should succeed - HTTP 200)
+│   └── Upgrade when already PRO (HTTP 200 with message)
 └── Security Tests
     ├── Access without token (should fail)
     └── Access with invalid token (should fail)
@@ -294,7 +445,7 @@ Save this as `notesapp-tests.postman_collection.json`:
 ```json
 {
   "info": {
-    "name": "Notes App - Multi-Tenant",
+    "name": "Notes App - Multi-Tenant (Complete)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -302,7 +453,19 @@ Save this as `notesapp-tests.postman_collection.json`:
       "name": "Auth",
       "item": [
         {
-          "name": "Login Tenant 1",
+          "name": "Register New User",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"newuser@example.com\",\n    \"password\": \"password123\"\n}"
+            },
+            "url": "http://localhost:8081/auth/register"
+          }
+        },
+        {
+          "name": "Login Tenant 1 (ADMIN)",
           "request": {
             "method": "POST",
             "header": [{"key": "Content-Type", "value": "application/json"}],
@@ -312,16 +475,89 @@ Save this as `notesapp-tests.postman_collection.json`:
             },
             "url": "http://localhost:8081/auth/login"
           }
+        },
+        {
+          "name": "Login Tenant 2 (MEMBER)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"user@another.com\",\n    \"password\": \"password123\"\n}"
+            },
+            "url": "http://localhost:8081/auth/login"
+          }
+        },
+        {
+          "name": "Login - Wrong Password (Should Fail)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"admin@test.com\",\n    \"password\": \"wrongpassword\"\n}"
+            },
+            "url": "http://localhost:8081/auth/login"
+          }
         }
       ]
     },
     {
-      "name": "Test Without Token (Should Fail)",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": "http://localhost:8081/api/notes"
-      }
+      "name": "Notes - CRUD",
+      "item": [
+        {
+          "name": "Get All Notes",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": "http://localhost:8081/api/notes"
+          }
+        },
+        {
+          "name": "Create Note",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{token}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Test Note\",\n    \"content\": \"Note content\"\n}"
+            },
+            "url": "http://localhost:8081/api/notes"
+          }
+        },
+        {
+          "name": "Delete Note (ADMIN Only)",
+          "request": {
+            "method": "DELETE",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminToken}}"}],
+            "url": "http://localhost:8081/api/notes/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Security Tests",
+      "item": [
+        {
+          "name": "Test Without Token (Should Fail)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:8081/api/notes"
+          }
+        },
+        {
+          "name": "Delete as MEMBER (Should Fail)",
+          "request": {
+            "method": "DELETE",
+            "header": [{"key": "Authorization", "value": "Bearer {{memberToken}}"}],
+            "url": "http://localhost:8081/api/notes/1"
+          }
+        }
+      ]
     }
   ]
 }

@@ -2,19 +2,32 @@ package com.vulnuris.notesservice.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 import java.security.Key;
 import java.util.Date;
 import java.util.Map;
 
+/**
+ * JWT utility component for token generation and validation.
+ * Configuration values are externalized to application.yaml.
+ */
+@Component
 public class JwtUtil {
 
-    private static final String SECRET = "gSJ4oTeHHUcr+NFvfyW4t0AArQ0/EODgjh+QLKLVKAw=";
-    private static final long EXPIRATION = 1000 * 60 * 60 * 24; // 24 hours
+    private final Key key;
+    private final long expiration;
 
-    private static final Key key = Keys.hmacShaKeyFor(SECRET.getBytes());
+    public JwtUtil(
+            @Value("${jwt.secret}") String secret,
+            @Value("${jwt.expiration}") long expiration
+    ) {
+        this.key = Keys.hmacShaKeyFor(secret.getBytes());
+        this.expiration = expiration;
+    }
 
-    public static String generateToken(Long userId, Long tenantId, String role) {
+    public String generateToken(Long userId, Long tenantId, String role) {
         return Jwts.builder()
                 .setClaims(Map.of(
                         "userId", userId,
@@ -22,12 +35,12 @@ public class JwtUtil {
                         "role", role
                 ))
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION))
+                .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    public static Claims validateToken(String token) {
+    public Claims validateToken(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(key)
                 .build()
