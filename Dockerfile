@@ -5,7 +5,8 @@ WORKDIR /app
 COPY .mvn/ .mvn/
 COPY mvnw pom.xml ./
 
-# 🔴 REQUIRED FIX (Windows → Linux permission issue)
+
+
 RUN chmod +x mvnw
 
 RUN ./mvnw dependency:go-offline -B

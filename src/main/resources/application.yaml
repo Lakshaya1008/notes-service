@@ -22,8 +22,8 @@ spring:
   jpa:
     hibernate:
       # Options: none, validate, update, create, create-drop
-      # Production should use 'validate' or 'none' with Flyway/Liquibase
-      ddl-auto: ${JPA_DDL_AUTO:update}
+      # 'update' will create tables if they don't exist
+      ddl-auto: update
     show-sql: ${SHOW_SQL:false}
     properties:
       hibernate:
