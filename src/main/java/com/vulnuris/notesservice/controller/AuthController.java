@@ -3,7 +3,10 @@ package com.vulnuris.notesservice.controller;
 import com.vulnuris.notesservice.dto.LoginRequest;
 import com.vulnuris.notesservice.dto.RegisterRequest;
 import com.vulnuris.notesservice.model.Role;
+import com.vulnuris.notesservice.model.SubscriptionPlan;
+import com.vulnuris.notesservice.model.Tenant;
 import com.vulnuris.notesservice.model.User;
+import com.vulnuris.notesservice.repository.TenantRepository;
 import com.vulnuris.notesservice.repository.UserRepository;
 import com.vulnuris.notesservice.security.JwtUtil;
 import jakarta.validation.Valid;
@@ -16,10 +19,12 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final UserRepository userRepository;
+    private final TenantRepository tenantRepository;
     private final JwtUtil jwtUtil;
 
-    public AuthController(UserRepository userRepository, JwtUtil jwtUtil) {
+    public AuthController(UserRepository userRepository, TenantRepository tenantRepository, JwtUtil jwtUtil) {
         this.userRepository = userRepository;
+        this.tenantRepository = tenantRepository;
         this.jwtUtil = jwtUtil;
     }
 
@@ -40,21 +45,25 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Email already registered");
         }
 
+        // Controlled tenant assignment via invite code
+        Tenant tenant;
+        Role userRole;
+
+        if ("TENANT1_PRO_INVITE".equals(request.getInviteCode())) {
+            // Assign to Tenant 1 (PRO plan)
+            tenant = getOrCreateTenant("Test Company", SubscriptionPlan.PRO);
+            userRole = Role.ADMIN; // Tenant 1 users are always ADMIN
+        } else {
+            // Default to Tenant 2 (FREE plan)
+            tenant = getOrCreateTenant("Another Company", SubscriptionPlan.FREE);
+            userRole = Role.MEMBER; // Default role for Tenant 2
+        }
+
         // Create new user
         User user = new User();
         user.setEmail(request.getEmail());
         user.setPassword(request.getPassword()); // In production, hash with BCryptPasswordEncoder
-
-        // Controlled tenant assignment via invite code
-        Long tenantId = 2L; // Default to Tenant 2 (FREE plan)
-        Role userRole = Role.MEMBER; // Default role for Tenant 2
-
-        if ("TENANT1_PRO_INVITE".equals(request.getInviteCode())) {
-            tenantId = 1L; // Assign to Tenant 1 (PRO plan) if invite code matches
-            userRole = Role.ADMIN; // Tenant 1 users are always ADMIN
-        }
-
-        user.setTenantId(tenantId);
+        user.setTenantId(tenant.getId()); // Use the actual tenant ID from database
         user.setRole(userRole);
 
         // Save user
@@ -68,6 +77,20 @@ public class AuthController {
         );
 
         return ResponseEntity.ok(token);
+    }
+
+    /**
+     * Gets an existing tenant by name or creates a new one if it doesn't exist.
+     * Returns the tenant with its actual database-generated ID.
+     */
+    private Tenant getOrCreateTenant(String name, SubscriptionPlan plan) {
+        return tenantRepository.findByName(name)
+                .orElseGet(() -> {
+                    Tenant tenant = new Tenant();
+                    tenant.setName(name);
+                    tenant.setSubscriptionPlan(plan);
+                    return tenantRepository.save(tenant);
+                });
     }
 
     /**
