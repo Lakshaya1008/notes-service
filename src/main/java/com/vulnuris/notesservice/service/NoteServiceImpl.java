@@ -33,8 +33,11 @@ public class NoteServiceImpl implements NoteService {
         Long tenantId = TenantContext.getTenantId();
 
         // Fetch tenant to check subscription plan
+        // If tenant doesn't exist (stale token after DB reset), throw clear error
         Tenant tenant = tenantRepository.findById(tenantId)
-                .orElseThrow(() -> new ResourceNotFoundException("Tenant not found with id: " + tenantId));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                    "Tenant not found with id: " + tenantId +
+                    ". Your session may be stale. Please logout and register/login again."));
 
         // Enforce subscription limits for FREE plan (per-user limit)
         if (tenant.getSubscriptionPlan() == SubscriptionPlan.FREE) {
