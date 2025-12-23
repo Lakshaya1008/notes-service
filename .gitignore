@@ -4,6 +4,12 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+### Environment Files ###
+.env
+.env.local
+.env.*.local
+!.env.example
+
 ### STS ###
 .apt_generated
 .classpath
@@ -31,3 +37,12 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Logs ###
+*.log
+logs/
+
+### OS Files ###
+.DS_Store
+Thumbs.db
+

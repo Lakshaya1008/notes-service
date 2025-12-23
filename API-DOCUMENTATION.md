@@ -7,6 +7,34 @@ http://localhost:8081
 
 ---
 
+## 🔐 Security & Role Management
+
+### Role Elevation Policy
+
+**⚠️ IMPORTANT SECURITY DESIGN:**
+
+- ✅ **Role elevation is intentionally NOT exposed via public API**
+- ✅ **No REST endpoint exists to change user roles (MEMBER → ADMIN)**
+- ✅ **All new registrations default to MEMBER role**
+- ✅ **For testing purposes:** Role changes are performed directly in the database
+- ✅ **In production:** Role management would be handled by internal admin tooling with proper audit trails
+
+**Why No Public Role Management API?**
+- Prevents privilege escalation attacks
+- Separates tenant operations from administrative functions
+- Production systems use dedicated admin panels with strict access controls
+- Role changes require approval workflows and security audit logging
+
+**For Testing ADMIN Features:**
+```sql
+-- Connect to database and run:
+UPDATE users SET role = 'ADMIN' WHERE email = 'user@example.com';
+```
+
+Then login again to receive a fresh JWT token with the updated ADMIN role.
+
+---
+
 ## Authentication Endpoints
 
 ### 1. Register New User
@@ -15,7 +43,7 @@ http://localhost:8081
 
 Create a new user account and receive a JWT token immediately.
 
-**Request:**
+**Request (Default - Assigns to Tenant 2 FREE Plan):**
 ```json
 POST /auth/register
 Content-Type: application/json
@@ -26,9 +54,22 @@ Content-Type: application/json
 }
 ```
 
-**Validation Rules:**
-- `email`: Required, must be valid email format
-- `password`: Required, minimum 6 characters
+**Request (With Invite Code - Assigns to Tenant 1 PRO Plan):**
+```json
+POST /auth/register
+Content-Type: application/json
+
+{
+    "email": "premiumuser@example.com",
+    "password": "securepassword123",
+    "inviteCode": "TENANT1_PRO_INVITE"
+}
+```
+
+**Request Fields:**
+- `email`: **Required**, must be valid email format
+- `password`: **Required**, minimum 6 characters
+- `inviteCode`: **Optional**, use `"TENANT1_PRO_INVITE"` to assign user to Tenant 1 (PRO plan)
 
 **Response (Success):**
 ```json
@@ -57,11 +98,16 @@ Content-Type: application/json
 }
 ```
 
+**Tenant Assignment Logic:**
+- ✅ **No inviteCode**: User assigned to **Tenant 2** (FREE plan, max 3 notes per user) - Default for public registration
+- ✅ **inviteCode = "TENANT1_PRO_INVITE"**: User assigned to **Tenant 1** (PRO plan, unlimited notes) - Premium access
+- ✅ **Invalid/unknown inviteCode**: Ignored, defaults to Tenant 2 (FREE)
+- ✅ All new users are assigned **MEMBER role** by default
+
 **Important Notes:**
-- ✅ New users are automatically assigned to **tenant ID = 1** (default tenant)
-- ✅ New users are automatically assigned **MEMBER role**
-- ❌ You **cannot** specify `tenantId` or `role` in the request body
-- This simplified registration is for assignment purposes. Production would use invitation-based onboarding.
+- This invitation code system simulates production-grade tenant onboarding for assignment purposes
+- In production, this would use cryptographically signed JWT invitation tokens with expiration
+- You **cannot** specify `tenantId` or `role` directly in the request body
 
 ---
 

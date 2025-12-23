@@ -2,6 +2,7 @@ package com.vulnuris.notesservice.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -32,6 +33,17 @@ public class GlobalExceptionHandler {
         ex.getBindingResult().getFieldErrors()
                 .forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
         return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Handle access denied exceptions (e.g., when user lacks required role).
+     * Returns 403 Forbidden.
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, String>> handleAccessDenied(AccessDeniedException ex) {
+        Map<String, String> response = new HashMap<>();
+        response.put("error", "Forbidden: You don't have permission to perform this action");
+        return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
     }
 
     /**

@@ -2,24 +2,73 @@
 
 ## Prerequisites
 1. Application running on `http://localhost:8081`
-2. PostgreSQL database with test data inserted
+2. PostgreSQL database initialized
 3. Postman installed
 
 ---
 
-## Test Data (Already in Database)
+## Setup Options
+
+You can test the application using either pre-existing test users OR by registering new users via the API.
+
+### ✅ Option 1: Use Pre-Existing Test Users (Recommended)
+
+Run the initialization script to create test tenants and users:
+
+```bash
+# Via Docker:
+docker exec -i notesapp-postgres psql -U postgres -d notesapp_db < init-data.sql
+
+# Or locally:
+psql -U postgres -d notesapp_db -f init-data.sql
+```
+
+This creates:
+- **Tenant 1 (PRO)**: admin@test.com / password123 (ADMIN role)
+- **Tenant 2 (FREE)**: user@another.com / password123 (MEMBER role)
+
+### ✅ Option 2: Register New Users via API
+
+**For Tenant 2 (FREE plan - max 3 notes) - DEFAULT:**
+```json
+POST http://localhost:8081/auth/register
+Content-Type: application/json
+
+{
+    "email": "test1@example.com",
+    "password": "password123"
+}
+```
+
+**For Tenant 1 (PRO plan - unlimited notes) - REQUIRES INVITE CODE:**
+```json
+POST http://localhost:8081/auth/register
+Content-Type: application/json
+
+{
+    "email": "test2@example.com",
+    "password": "password123",
+    "inviteCode": "TENANT1_PRO_INVITE"
+}
+```
+
+---
+
+## Test Data (After Setup Option 1)
 
 ### Tenant 1: Test Company (PRO)
 - **User:** admin@test.com
 - **Password:** password123
 - **Role:** ADMIN
 - **Tenant ID:** 1
+- **Subscription:** PRO (unlimited notes)
 
 ### Tenant 2: Another Company (FREE)
 - **User:** user@another.com
 - **Password:** password123
 - **Role:** MEMBER
 - **Tenant ID:** 2
+- **Subscription:** FREE (max 3 notes per user)
 
 ---
 
@@ -253,20 +302,65 @@ HTTP 401 Unauthorized
 
 ---
 
+## 🔐 IMPORTANT: Role Elevation Security Design
+
+**⚠️ CRITICAL SECURITY NOTICE:**
+
+Before testing ADMIN-only features, understand the security architecture:
+
+- ✅ **Role elevation is intentionally NOT exposed via public API**
+- ✅ **No REST endpoint exists to change MEMBER → ADMIN**
+- ✅ **For testing purposes only:** Users are promoted to ADMIN directly in the database
+- ✅ **In production:** Role management would be handled by:
+  - Internal admin tooling (separate application)
+  - Proper authentication and authorization for admins
+  - Audit logging of all role changes
+  - Approval workflows for privilege escalation
+
+**Why This Design?**
+- Prevents privilege escalation vulnerabilities
+- Separates user self-service from administrative operations
+- Follows principle of least privilege
+- Production systems never expose role management via public APIs
+
+**For This Assignment:**
+- We manually update the database to test ADMIN features
+- This simulates what an internal admin tool would do
+- Reviewers can verify role-based authorization works correctly
+
+---
+
 ## TEST 10: Tenant Upgrade - ADMIN Only ✅
 
 ### Setup
 This test requires an ADMIN user on a FREE plan tenant.
 
-**Option 1: Update Tenant 2 user to ADMIN (temporary for testing)**
+**⚠️ SECURITY NOTE:** Role changes are NOT available via API. Use database updates for testing.
+
+**Option 1: Promote existing Tenant 2 user to ADMIN (temporary for testing)**
 ```sql
+-- Connect to database
+docker exec -it notesapp-postgres psql -U postgres -d notesapp_db
+
+-- Promote user
 UPDATE users SET role = 'ADMIN' WHERE email = 'user@another.com';
+
+-- Verify change
+SELECT id, email, role, tenant_id FROM users WHERE email = 'user@another.com';
 ```
 
-**Option 2: Create new test data**
+**Option 2: Register new user and promote**
 ```sql
-INSERT INTO tenants (id, name, subscription_plan) VALUES (3, 'Test FREE Tenant', 'FREE');
-INSERT INTO users (id, email, password, role, tenant_id) VALUES (3, 'admin@free.com', 'password123', 'ADMIN', 3);
+-- After registering via /auth/register with TENANT2_INVITE
+UPDATE users SET role = 'ADMIN' WHERE email = 'newadmin@test.com';
+```
+
+**Option 3: Use pre-existing ADMIN user on PRO plan**
+```sql
+-- Note: admin@test.com is on Tenant 1 (PRO plan)
+-- To test upgrade, temporarily downgrade:
+UPDATE tenants SET subscription_plan = 'FREE' WHERE id = 1;
+-- (Remember to restore after testing)
 ```
 
 ---

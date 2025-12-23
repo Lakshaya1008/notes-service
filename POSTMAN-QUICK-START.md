@@ -35,9 +35,9 @@ $env:PGPASSWORD='your_postgres_password'; psql -U postgres -d notesapp_db -f tes
 
 ---
 
-## 0️⃣ REGISTER (Create New User) - ⚠️ NOT RECOMMENDED FOR TESTING
+## 0️⃣ REGISTER (Create New User)
 
-**NOTE:** New registrations are automatically assigned to Tenant 1 (PRO plan). To test FREE plan limits, use the pre-existing `user@another.com` account instead.
+### Option A: Register for Tenant 2 (FREE Plan - Default - Max 3 Notes)
 
 ```
 POST http://localhost:8081/auth/register
@@ -48,16 +48,43 @@ Content-Type: application/json
     "password": "mypassword123"
 }
 ```
+✅ User assigned to **Tenant 2 (FREE plan)** with **MEMBER role**  
+✅ Limited to 3 notes per user  
+✅ Default for public registration  
 ✅ Returns JWT token immediately
-⚠️ User automatically assigned to **Tenant 1 (PRO plan)** with **MEMBER role**
 
 **Response:**
 ```
 Status: 200 OK
-Body: eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjMsInRlbmFudElkIjoxLCJyb2xlIjoiTUVNQkVSIi... (JWT token)
+Body: eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjMsInRlbmFudElkIjoyLCJyb2xlIjoiTUVNQkVSIi... (JWT token)
 ```
 
-**⚠️ IMPORTANT:** You registered `user@another.com` via the API, which overwrote the test data! This user is now on Tenant 1 instead of Tenant 2.
+---
+
+### Option B: Register for Tenant 1 (PRO Plan - Unlimited Notes - Requires Invite)
+
+```
+POST http://localhost:8081/auth/register
+Content-Type: application/json
+
+{
+    "email": "premiumuser@test.com",
+    "password": "mypassword123",
+    "inviteCode": "TENANT1_PRO_INVITE"
+}
+```
+✅ User assigned to **Tenant 1 (PRO plan)** with **MEMBER role**  
+✅ Can create unlimited notes  
+✅ Requires special invitation code  
+✅ Returns JWT token immediately
+
+**Response:**
+```
+Status: 200 OK
+Body: eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjQsInRlbmFudElkIjoxLCJyb2xlIjoiTUVNQkVSIi... (JWT token)
+```
+
+**Note:** The `inviteCode` field is optional. Omitting it or using an invalid code defaults to Tenant 2 (FREE plan) assignment.
 
 ---
 

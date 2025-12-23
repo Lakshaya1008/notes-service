@@ -26,9 +26,12 @@ public class AuthController {
     /**
      * Register a new user.
      *
-     * Note: For assignment simplicity, all new users are assigned to default tenant (ID=1)
-     * and given MEMBER role. In production, this would use an invitation-based flow where
-     * tenantId and role are determined by invitation token.
+     * Supports invitation-based tenant assignment:
+     * - No inviteCode: User assigned to Tenant 2 (FREE plan, MEMBER role)
+     * - "TENANT1_PRO_INVITE": User assigned to Tenant 1 (PRO plan, ADMIN role)
+     *
+     * All Tenant 1 users are PRO and ADMIN.
+     * In production, this would use cryptographically signed invitation tokens.
      */
     @PostMapping("/register")
     public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest request) {
@@ -37,12 +40,22 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Email already registered");
         }
 
-        // Create new user with default tenant and MEMBER role
+        // Create new user
         User user = new User();
         user.setEmail(request.getEmail());
         user.setPassword(request.getPassword()); // In production, hash with BCryptPasswordEncoder
-        user.setTenantId(1L);  // Default tenant for assignment simplicity
-        user.setRole(Role.MEMBER);  // All new users are MEMBER by default
+
+        // Controlled tenant assignment via invite code
+        Long tenantId = 2L; // Default to Tenant 2 (FREE plan)
+        Role userRole = Role.MEMBER; // Default role for Tenant 2
+
+        if ("TENANT1_PRO_INVITE".equals(request.getInviteCode())) {
+            tenantId = 1L; // Assign to Tenant 1 (PRO plan) if invite code matches
+            userRole = Role.ADMIN; // Tenant 1 users are always ADMIN
+        }
+
+        user.setTenantId(tenantId);
+        user.setRole(userRole);
 
         // Save user
         user = userRepository.save(user);

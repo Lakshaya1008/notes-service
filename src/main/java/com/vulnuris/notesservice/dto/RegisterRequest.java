@@ -7,9 +7,12 @@ import jakarta.validation.constraints.Size;
 /**
  * Registration request DTO.
  *
- * Note: For assignment simplicity, new users are automatically assigned to a default tenant (ID=1)
- * and given MEMBER role. In production, this would use an invitation-based onboarding flow
- * where tenantId and role are determined by the invitation token.
+ * Supports invitation-based tenant assignment:
+ * - No inviteCode: User assigned to Tenant 2 (FREE plan, MEMBER role)
+ * - "TENANT1_PRO_INVITE": User assigned to Tenant 1 (PRO plan, ADMIN role)
+ *
+ * All Tenant 1 users are PRO and ADMIN.
+ * In production, this would use cryptographically signed invitation tokens.
  */
 public class RegisterRequest {
     @NotBlank(message = "Email is required")
@@ -19,6 +22,9 @@ public class RegisterRequest {
     @NotBlank(message = "Password is required")
     @Size(min = 6, message = "Password must be at least 6 characters")
     private String password;
+
+    // Optional invite code for controlled tenant assignment
+    private String inviteCode;
 
     public String getEmail() {
         return email;
@@ -34,6 +40,14 @@ public class RegisterRequest {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getInviteCode() {
+        return inviteCode;
+    }
+
+    public void setInviteCode(String inviteCode) {
+        this.inviteCode = inviteCode;
     }
 }
 

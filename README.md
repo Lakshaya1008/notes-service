@@ -84,9 +84,26 @@ mvn spring-boot:run
 
 Server starts on **http://localhost:8080** (or the port specified by `PORT` env var)
 
-### 4. Test with Postman
+### 4. Initialize Test Data
 
-**Register New User:**
+Run the initialization script to create the 2 test tenants and users:
+
+```bash
+docker exec -i notesapp-postgres psql -U postgres -d notesapp_db < init-data.sql
+```
+
+Or if running locally without Docker:
+```bash
+psql -U postgres -d notesapp_db -f init-data.sql
+```
+
+This creates:
+- **Tenant 1** (PRO plan): admin@test.com / password123 (ADMIN role)
+- **Tenant 2** (FREE plan): user@another.com / password123 (MEMBER role)
+
+### 5. Test with Postman
+
+#### Register New User (Tenant 2 - FREE Plan - Default):
 ```bash
 POST http://localhost:8080/auth/register
 Content-Type: application/json
@@ -96,9 +113,24 @@ Content-Type: application/json
     "password": "mypassword"
 }
 ```
-> Note: New users are automatically assigned to tenant ID=1 with MEMBER role.
+> User is assigned to **Tenant 2** (FREE plan) by default - max 3 notes per user.
 
-**Login:**
+#### Register New User (Tenant 1 - PRO Plan - With Invite Code):
+```bash
+POST http://localhost:8080/auth/register
+Content-Type: application/json
+
+{
+    "email": "premiumuser@example.com",
+    "password": "mypassword",
+    "inviteCode": "TENANT1_PRO_INVITE"
+}
+```
+> User is assigned to **Tenant 1** (PRO plan) with the invite code - unlimited notes.
+
+**Note:** The invitation code system simulates real-world tenant onboarding for assignment purposes. In production, this would use cryptographically signed invitation tokens with expiration.
+
+#### Login:
 ```bash
 POST http://localhost:8080/auth/login
 Content-Type: application/json
@@ -109,7 +141,7 @@ Content-Type: application/json
 }
 ```
 
-**Create Note (with token):**
+#### Create Note (with token):
 ```bash
 POST http://localhost:8080/api/notes
 Authorization: Bearer YOUR_JWT_TOKEN
@@ -323,14 +355,29 @@ The application includes several production-ready safeguards:
 
 ### Role-Based Authorization
 - **MEMBER**: Can create, read, and update notes within their tenant
-- **ADMIN**: Has all MEMBER permissions + can delete notes
+- **ADMIN**: Has all MEMBER permissions + can delete notes + can upgrade tenant subscription
+
+### Role Elevation (Security Design)
+
+**⚠️ IMPORTANT SECURITY NOTICE:**
+
+- ✅ **Role elevation is intentionally NOT exposed via public API**
+- ✅ **No endpoint exists to promote MEMBER → ADMIN**
+- ✅ **For testing purposes only:** Users are promoted to ADMIN directly in the database
+- ✅ **In production:** Role management would be handled by internal admin tooling with proper audit trails
+
+**Why No Public API for Role Changes?**
+- Prevents privilege escalation attacks
+- Separates tenant user management from application registration
+- Production systems use dedicated admin panels with strict access controls
+- Role changes require approval workflows and audit logging
 
 ### Testing ADMIN Role Functionality
 
 **Background:**
 - Role management APIs are **intentionally NOT exposed** for security
 - User roles are managed at the database level
-- For testing ADMIN-only features (like DELETE), roles must be updated directly in the database
+- For testing ADMIN-only features (like DELETE and tenant upgrade), roles must be updated directly in the database
 
 **How to Test ADMIN Authorization:**
 
@@ -340,7 +387,7 @@ The application includes several production-ready safeguards:
    {
      "email": "testadmin@example.com",
      "password": "password123",
-     "tenantName": "Test Company"
+     "inviteCode": "TENANT2_INVITE"
    }
    ```
 
@@ -358,14 +405,19 @@ The application includes several production-ready safeguards:
    }
    ```
 
-4. **Test ADMIN-only endpoint** (DELETE note):
+4. **Test ADMIN-only endpoints:**
    ```bash
+   # Delete note
    DELETE /api/notes/{id}
+   Authorization: Bearer <token>
+   
+   # Upgrade tenant subscription
+   PUT /api/tenants/upgrade
    Authorization: Bearer <token>
    ```
 
 **Result:**
-- ✅ ADMIN users: Successfully delete notes (200 OK)
+- ✅ ADMIN users: Successfully delete notes (204 No Content) and upgrade tenant (200 OK)
 - ❌ MEMBER users: Receive 403 Forbidden
 
 **Note:** In a production system, role management would be handled via dedicated admin APIs with proper authorization checks.
@@ -395,23 +447,45 @@ Result: 403 Forbidden ✅ (Blocked!)
 - No note limits
 
 ### How to Test:
-1. Find a tenant with FREE plan in database (Tenant 1 is FREE in test data)
-2. Create 3 notes successfully
+1. Register users with invite code "TENANT2_INVITE" to assign them to Tenant 2 (FREE plan)
+2. Create 3 notes successfully as Tenant 2 user
 3. Try creating a 4th → Should receive 403 error
 
 ## Test Data
 
-Default test users (after running test-data.sql):
+Default test users (after running init-data.sql):
 
-**Tenant 1 - Test Company (FREE Plan):**
+**Tenant 1 - Test Company (PRO Plan):**
 - Email: admin@test.com
 - Password: password123
 - Role: ADMIN
+- Subscription: PRO (unlimited notes)
 
-**Tenant 2 - Another Company (PRO Plan):**
+**Tenant 2 - Another Company (FREE Plan):**
 - Email: user@another.com
 - Password: password123
 - Role: MEMBER
+- Subscription: FREE (max 3 notes per user)
+
+## Invitation Code System
+
+For assignment purposes, tenant onboarding is simulated using an invitation code system:
+
+**Registration without invite code:**
+- User is assigned to **Tenant 2** (FREE plan)
+- Default behavior for public registration
+- Suitable for regular users (max 3 notes per user)
+
+**Registration with invite code `TENANT1_PRO_INVITE`:**
+- User is assigned to **Tenant 1** (PRO plan)
+- Demonstrates controlled access to premium features
+- Unlimited notes for invited premium users
+
+**Production Implementation:**
+- Would use cryptographically signed JWT invitation tokens
+- Tokens would include: tenantId, role, expiration
+- Tokens would be single-use and validated server-side
+- This approach maintains security while enabling flexible onboarding
 
 ## Architecture
 

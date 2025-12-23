@@ -34,7 +34,7 @@ public class NoteServiceImpl implements NoteService {
 
         // Fetch tenant to check subscription plan
         Tenant tenant = tenantRepository.findById(tenantId)
-                .orElseThrow(() -> new RuntimeException("Invalid tenant"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tenant not found with id: " + tenantId));
 
         // Enforce subscription limits for FREE plan (per-user limit)
         if (tenant.getSubscriptionPlan() == SubscriptionPlan.FREE) {
