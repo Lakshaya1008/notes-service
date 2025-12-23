@@ -109,6 +109,23 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
         }
 
+        // Check if user's tenant still exists (handles stale tenant references after DB reset)
+        if (!tenantRepository.existsById(user.getTenantId())) {
+            // User's tenant was deleted (DB reset) - reassign to correct tenant based on role
+            Tenant tenant;
+            if (user.getRole() == Role.ADMIN) {
+                // ADMIN users belong to Tenant 1 (PRO plan)
+                tenant = getOrCreateTenant("Test Company", SubscriptionPlan.PRO);
+            } else {
+                // MEMBER users belong to Tenant 2 (FREE plan)
+                tenant = getOrCreateTenant("Another Company", SubscriptionPlan.FREE);
+            }
+
+            // Update user's tenant reference
+            user.setTenantId(tenant.getId());
+            user = userRepository.save(user);
+        }
+
         // Generate JWT token
         String token = jwtUtil.generateToken(
                 user.getId(),
