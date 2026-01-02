@@ -1,0 +1,96 @@
+spring:
+  application:
+    name: ${APP_NAME:notesapp}
+
+  # ========================================
+  # DATABASE CONFIGURATION
+  # ========================================
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/notesapp_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres123}
+    driver-class-name: org.postgresql.Driver
+    # Connection pool settings for production
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      minimum-idle: ${DB_MIN_IDLE:2}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:30000}
+
+  # ========================================
+  # JPA / HIBERNATE CONFIGURATION
+  # ========================================
+  jpa:
+    hibernate:
+      # Options: none, validate, update, create, create-drop
+      # 'update' will create tables if they don't exist
+      ddl-auto: update
+    show-sql: ${SHOW_SQL:false}
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    defer-datasource-initialization: true
+    open-in-view: false
+
+  # ========================================
+  # SQL INITIALIZATION
+  # ========================================
+  sql:
+    init:
+      # Options: always, embedded, never
+      # Set to 'never' in production if using migration tools
+      mode: ${SQL_INIT_MODE:always}
+      data-locations: classpath:data.sql
+      continue-on-error: ${SQL_CONTINUE_ON_ERROR:true}
+
+# ========================================
+# SERVER CONFIGURATION
+# ========================================
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: ${ERROR_INCLUDE_MESSAGE:never}
+    include-stacktrace: ${ERROR_INCLUDE_STACKTRACE:never}
+
+# ========================================
+# JWT CONFIGURATION
+# ========================================
+jwt:
+  # REQUIRED: Must be set via environment variable in production
+  secret: ${JWT_SECRET:}
+  # Token expiration in milliseconds (default: 24 hours)
+  expiration: ${JWT_EXPIRATION:86400000}
+
+# ========================================
+# CORS CONFIGURATION
+# ========================================
+cors:
+  # Comma-separated list of allowed origins
+  # Default: http://localhost:5173 (Vite default)
+  # Production: Set to your deployed frontend URL
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
+# ========================================
+# LOGGING CONFIGURATION
+# ========================================
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:INFO}
+    com.vulnuris.notesservice: ${LOG_LEVEL_APP:INFO}
+    org.springframework.security: ${LOG_LEVEL_SECURITY:WARN}
+    org.hibernate.SQL: ${LOG_LEVEL_SQL:WARN}
+  pattern:
+    console: "${LOG_PATTERN:%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n}"
+
+# ========================================
+# ACTUATOR / HEALTH CHECK (if enabled)
+# ========================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: ${ACTUATOR_ENDPOINTS:health,info}
+  endpoint:
+    health:
+      show-details: ${HEALTH_SHOW_DETAILS:never}
+
