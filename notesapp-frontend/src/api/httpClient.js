@@ -115,5 +115,25 @@ const httpClient = {
   }
 };
 
+/**
+ * Wake up the backend (useful for free-tier hosting that sleeps)
+ * @returns {Promise<void>} Resolves when the backend responds
+ */
+const wakeUpBackend = async () => {
+  try {
+    const response = await fetch(BASE_URL, { method: 'GET' });
+    if (!response.ok) {
+      console.warn('Backend wake-up request failed:', response.status, response.statusText);
+    } else {
+      console.log('Backend is awake and ready.');
+    }
+  } catch (error) {
+    console.error('Error waking up backend:', error);
+  }
+};
+
+// Export wake-up function
+export { wakeUpBackend };
+
 export default httpClient;
 

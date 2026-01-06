@@ -6,8 +6,15 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Notes from './pages/Notes';
+import { wakeUpBackend } from './api/httpClient';
+import { useEffect } from 'react';
 
 function App() {
+  // Wake up the backend on app load
+  useEffect(() => {
+    wakeUpBackend();
+  }, []);
+
   return (
     <BrowserRouter>
       <ToastProvider>
